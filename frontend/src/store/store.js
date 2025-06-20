@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+
 const useChatStore = create((set, get) => ({
   messages: [],
   setMessages: (messages) => set({ messages }),
@@ -55,7 +57,7 @@ const useChatStore = create((set, get) => ({
       const currentUser = get().currentUser;
       if (!currentUser) return;
       
-      const response = await fetch(`http://localhost:8080/api/users/${currentUser.id}/contacts`);
+      const response = await fetch(`${API_URL}/api/users/${currentUser.id}/contacts`);
       const contacts = await response.json();
       set({ contacts });
     } catch (error) {
@@ -68,7 +70,7 @@ const useChatStore = create((set, get) => ({
       const currentUser = get().currentUser;
       if (!currentUser) return;
       
-      const response = await fetch(`http://localhost:8080/api/users/${currentUser.id}/chats`);
+      const response = await fetch(`${API_URL}/api/users/${currentUser.id}/chats`);
       const chats = await response.json();
       set({ recentChats: chats });
     } catch (error) {
@@ -81,7 +83,7 @@ const useChatStore = create((set, get) => ({
       const currentUser = get().currentUser;
       if (!currentUser) return;
       
-      const response = await fetch(`http://localhost:8080/api/chats/${currentUser.id}/${contactId}`);
+      const response = await fetch(`${API_URL}/api/chats/${currentUser.id}/${contactId}`);
       const chat = await response.json();
       
       // Transform messages to match frontend format

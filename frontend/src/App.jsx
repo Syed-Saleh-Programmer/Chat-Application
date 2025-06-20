@@ -8,6 +8,8 @@ import LoginButton from './components/LoginButton';
 import LogoutButton from './components/LogoutButton';
 import Sidebar from './components/Sidebar';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+
 function App() {
   const {
     messages,
@@ -68,7 +70,7 @@ function App() {
         
         // Register user in database
         try {
-          await fetch('http://localhost:8080/api/users', {
+          await fetch(`${API_URL}/api/users`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

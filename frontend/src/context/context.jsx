@@ -7,8 +7,11 @@ export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
   
   useEffect(() => {
+    // Use environment variable for socket URL
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || "http://localhost:8080";
+    
     // Create socket connection
-    const newSocket = io("http://localhost:8080/", {
+    const newSocket = io(socketUrl, {
       transports: ['websocket', 'polling']
     });
     

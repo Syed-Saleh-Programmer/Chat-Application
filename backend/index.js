@@ -25,10 +25,40 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('MongoDB connected'))
-  .catch(err => console.error('MongoDB connection error:', err));
+// MongoDB Connection with better error handling
+const connectDB = async () => {
+  try {
+    console.log('Attempting to connect to MongoDB...');
+    console.log('Connection string:', process.env.MONGODB_URI?.replace(/:[^:]*@/, ':****@')); // Hide password in logs
+    
+    await mongoose.connect(process.env.MONGODB_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    
+    console.log('✅ MongoDB connected successfully');
+  } catch (error) {
+    console.error('❌ MongoDB connection error:', error.message);
+    console.error('Full error:', error);
+    process.exit(1); // Exit if database connection fails
+  }
+};
+
+// Connect to database
+connectDB();
+
+// MongoDB connection event handlers
+mongoose.connection.on('connected', () => {
+  console.log('📡 Mongoose connected to MongoDB');
+});
+
+mongoose.connection.on('error', (err) => {
+  console.error('📡 Mongoose connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('📡 Mongoose disconnected from MongoDB');
+});
 
 const io = new Server(server, {
     cors: {
@@ -44,9 +74,24 @@ const io = new Server(server, {
     pingInterval: 25000,
 });
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({ message: 'Server is running', timestamp: new Date().toISOString() });
+// Health check endpoint with database status
+app.get('/health', async (req, res) => {
+  try {
+    // Check database connection
+    const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+    
+    res.status(200).json({ 
+      message: 'Server is running', 
+      timestamp: new Date().toISOString(),
+      database: dbStatus,
+      environment: process.env.NODE_ENV || 'development'
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      message: 'Health check failed', 
+      error: error.message 
+    });
+  }
 });
 
 // Store active socket connections
@@ -73,6 +118,7 @@ app.post('/api/users', async (req, res) => {
     
     res.json(user);
   } catch (error) {
+    console.error('Error in /api/users:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -89,6 +135,7 @@ app.get('/api/users/:userId/contacts', async (req, res) => {
     
     res.json(contacts);
   } catch (error) {
+    console.error('Error in /api/users/:userId/contacts:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -124,6 +171,7 @@ app.get('/api/chats/:userId/:contactId', async (req, res) => {
     
     res.json(chat);
   } catch (error) {
+    console.error('Error in /api/chats/:userId/:contactId:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -147,6 +195,7 @@ app.get('/api/users/:userId/chats', async (req, res) => {
     
     res.json(chats);
   } catch (error) {
+    console.error('Error in /api/users/:userId/chats:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -374,7 +423,18 @@ io.on("connection", socket => {
     });
 });
 
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+    console.log('SIGTERM received, shutting down gracefully');
+    await mongoose.connection.close();
+    server.close(() => {
+        console.log('Server closed');
+        process.exit(0);
+    });
+});
+
 server.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+    console.log(`🚀 Server is running on port ${PORT}`);
+    console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 
